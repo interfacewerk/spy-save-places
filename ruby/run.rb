@@ -1,18 +1,70 @@
 require 'rspec'
+require 'matrix'
+
+class Matrix
+  def []=(i, j, x)
+    @rows[i][j] = x
+  end
+end
 
 # This is where you implement your solution 
 def convert_coordinates(agents)
+  agents.map{ |position| [position[/[A-Z]+/].ord - 'A'.ord, position[/[0-9]+/].to_i - 1] }
+end
+
+def convert_coordinates_backwards(agents)
+  agents.map{ |position| (position[0] + 'A'.ord).chr + (position[1] + 1).to_s }
+end
+
+def calculate_distance(a, b)
+  (a[0] - b[0]).abs + (a[1] - b[1]).abs
 end
 
 def find_safe_spaces(agents)
+  safe_spaces_by_position = Matrix.build(10, 10){|r, c| 100}
+  agents = agents.select{|a| a[0] < 10 and a[1] < 10}
+
+  for y in 0..9 do
+    for x in 0..9 do
+      for position in agents
+        distance = calculate_distance(position, [x, y])
+        #puts x.to_s + "," + y.to_s + ": " + distance.to_s
+        safe_spaces_by_position[x, y] = distance if distance < safe_spaces_by_position[x, y]
+      end
+    end
+  end
+
+  max = 0
+  for y in 0..9 do
+    for x in 0..9 do
+      max = safe_spaces_by_position[x, y] if safe_spaces_by_position[x, y] > max
+    end
+  end
+
+  result = []
+  if max > 0
+    for x in 0..9 do
+      for y in 0..9 do
+        result << [x, y] if safe_spaces_by_position[x, y] == max
+      end
+    end
+  end
+
+  return result
 end
 
 def advice_for_alex(agents)
+  results = find_safe_spaces(convert_coordinates(agents))
+
+  return 'The whole city is safe for Alex! :-)' if agents.size == 0 or results.size == 100
+  return 'There are no safe locations for Alex! :-(' if results.size == 0
+
+  return convert_coordinates_backwards(results)
 end
 
 # Please enable Level 1, 2, 3-Tests by replacing xdescribe with describe!
 # Do not edit the tests itself!
-RSpec.xdescribe 'Spy Places Level 1 - convert coordinates' do
+RSpec.describe 'Spy Places Level 1 - convert coordinates' do
   it 'no agents return empty array' do
     agents = []
     expect(convert_coordinates(agents)).to match_array([])
@@ -37,7 +89,7 @@ RSpec.xdescribe 'Spy Places Level 1 - convert coordinates' do
   end
 end
 
-RSpec.xdescribe 'Spy Places Level 2 - find save places' do
+RSpec.describe 'Spy Places Level 2 - find save places' do
   it 'some places are save if agents are some' do
     agents =
         [[1, 1], [3, 5], [4, 8], [7, 3], [7, 8], [9, 1]]
@@ -55,7 +107,7 @@ RSpec.xdescribe 'Spy Places Level 2 - find save places' do
   end
 end
 
-RSpec.xdescribe 'Spy Places Level 3 - find edge cases and give advice to Alex' do
+RSpec.describe 'Spy Places Level 3 - find edge cases and give advice to Alex' do
   it 'expects all save places at no agents' do
     agents = []
     expect(advice_for_alex(agents)).to eq('The whole city is safe for Alex! :-)')
